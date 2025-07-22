@@ -6,6 +6,7 @@ from rest_framework import status
 from .models import User,OTP
 from .serializers import RegisterSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth.hashers import make_password
 
 
 # Create your views here.
@@ -27,15 +28,19 @@ class RequestOTPView(APIView):
             return Response({'error':'User not found!'},status=404)
         
         otp_code = f"{random.randint(100000,999999)}"
-        OTP.objects.create(user=user,code=otp_code)
+        hashed_otp = make_password(otp_code)
+
+        OTP.objects.create(user=user,code=hashed_otp)
 
         print(f"[Mock Email] OTP for {email}: {otp_code}")  
         return Response({'message': 'OTP sent to your email.'}, status=200)
+    
+    
 
 class VerifyOTPView(APIView):
     def post(self, request):
         email = request.data.get('email')
-        code = request.data.get('otp')
+        raw_code = request.data.get('otp')
 
         try:
             user = User.objects.get(email=email)
@@ -43,12 +48,15 @@ class VerifyOTPView(APIView):
             return Response({'error': 'User not found.'}, status=404)
 
         try:
-            otp = OTP.objects.filter(user=user, code=code).latest('created_at')
+            otp = OTP.objects.filter(user=user).latest('created_at')
         except OTP.DoesNotExist:
-            return Response({'error': 'Invalid OTP.'}, status=400)
+            return Response({'error': 'OTP not found.'}, status=400)
 
         if otp.is_expired():
             return Response({'error': 'OTP expired.'}, status=400)
+
+        if not otp.check_otp(raw_code):
+            return Response({'error': 'Invalid OTP.'}, status=400)
 
         user.is_verified = True
         user.save()
