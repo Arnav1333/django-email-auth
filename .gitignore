@@ -1,0 +1,21 @@
+# Django
+*.pyc
+__pycache__/
+db.sqlite3
+.env
+
+# Docker
+*.pid
+*.log
+
+# Virtual Envs
+venv/
+.env/
+.envrc
+.venv
+
+# OS Files
+.DS_Store
+
+# VS Code
+.vscode/
